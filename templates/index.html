@@ -1,1 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>CarbonIt Vault</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="shell">
+    <header>
+      <div class="brand"><span class="dot"></span>CARBONIT VAULT</div>
+      <div class="status" id="status">LOCKED</div>
+    </header>
 
+    <main>
+      <section id="auth" class="card auth-card">
+        <div class="eyebrow">POST-QUANTUM PASSWORD VAULT</div>
+        <h1 id="authTitle">Unlock your vault</h1>
+        <p class="muted" id="authHint">Your master password never leaves this local app.</p>
+        <input id="master" type="password" autocomplete="current-password"
+               placeholder="Master password">
+        <button id="authBtn" class="primary">Unlock</button>
+        <p id="authError" class="error"></p>
+      </section>
+
+      <section id="vault" hidden>
+        <div class="toolbar">
+          <input id="search" placeholder="Search credentials...">
+          <button id="addBtn" class="primary">+ Add</button>
+          <button id="exportBtn" class="ghost">Export Vault</button>
+          <button id="lockBtn" class="danger">Lock</button>
+        </div>
+
+        <div id="entries" class="grid"></div>
+        <div id="empty" class="empty">No credentials yet.</div>
+      </section>
+    </main>
+
+    <div id="modal" class="modal" hidden>
+      <div class="modal-box">
+        <div class="modal-head">
+          <h2>Add credential</h2>
+          <button id="closeModal" class="icon">×</button>
+        </div>
+        <input id="name" placeholder="Account / service">
+        <input id="username" placeholder="Username or email">
+        <div class="input-group">
+            <input id="password" type="password" placeholder="Password">
+            <button id="genBtn" class="ghost" style="margin-top: 7px; margin-left: 5px;">Generate</button>
+        </div>
+        <input id="url" placeholder="Website URL">
+        <button id="createBtn" class="primary" style="width: 100%; margin-top: 15px;">Add to vault</button>
+      </div>
+    </div>
+  </div>
+  <script src="/static/app.js"></script>
+</body>
+</html>
