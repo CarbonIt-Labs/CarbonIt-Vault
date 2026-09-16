@@ -19,7 +19,6 @@ CarbonIt Vault is a local-first, serverless desktop password manager engineered 
 
 ## 🚀 Key Features
 
-* **Serverless Native Desktop Interface:** Leverages `pywebview` to render the UI natively via your operating system's web engine, completely eliminating local network port binding (`127.0.0.1`) and protecting against local network snooping.
 * **Post-Quantum Key Establishment:** Implements NIST-standardized **ML-KEM-1024** via QuantCrypt to ensure your vault keys remain secure even against quantum decryption.
 * **Argon2id Key Derivation:** Uses memory-hard password hashing (Argon2id) to protect against modern GPU/ASIC brute-force attacks.
 * **Zero-Trust Memory Management:** Actively zeroizes active symmetric keys using mutable `bytearray` objects in Python RAM the moment the vault is locked.
