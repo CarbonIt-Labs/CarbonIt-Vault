@@ -6,7 +6,6 @@ let authToken = null;
 let inactivityTimer = null;
 const AUTO_LOCK_MS = 5 * 60 * 1000; // 5 minutes
 
-// Reset the auto-lock timer on user activity
 function resetTimer() {
   if (inactivityTimer) clearTimeout(inactivityTimer);
   if (unlocked) {
@@ -29,13 +28,11 @@ async function api(url, options = {}) {
 
   const res = await fetch(url, { ...options, headers });
   
-  // If we receive a 401 Unauthorized directly from an API call, auto-lock UI
   if (res.status === 401) {
       lockVault();
       throw new Error("Session expired. Please unlock again.");
   }
 
-  // Handle blob responses (like file exports)
   if (res.headers.get("content-type")?.includes("application/octet-stream")) {
     return res.blob();
   }
@@ -51,12 +48,16 @@ async function init() {
     $("#authTitle").textContent = "Create CarbonIt Vault";
     $("#authHint").textContent = "Choose a strong master password. This app stores your encrypted vault locally.";
     $("#authBtn").textContent = "Create vault";
+  } else {
+    $("#authTitle").textContent = "Unlock your vault";
+    $("#authHint").textContent = "Your master password never leaves this local app.";
+    $("#authBtn").textContent = "Unlock";
   }
 }
 
 function showVault(data) {
   entries = data.entries || [];
-  authToken = data.token; // Save our session token
+  authToken = data.token;
   unlocked = true;
   $("#auth").hidden = true;
   $("#vault").hidden = false;
@@ -79,7 +80,9 @@ function render() {
       <div class="user">${escapeHtml(e.username || "")}</div>
       <div class="secret">••••••••••</div>
       <div class="entry-actions">
-        <button class="ghost" onclick="copyPassword('${e.id}')">Copy</button>
+        <button class="ghost" onclick="copyField('${e.id}', 'password')">Copy Pass</button>
+        <button class="ghost" onclick="copyField('${e.id}', 'username')">Copy User</button>
+        <button class="ghost" onclick="openEditModal('${e.id}')">Edit</button>
         <button class="danger" onclick="removeEntry('${e.id}')">Delete</button>
       </div>
     </article>
@@ -92,11 +95,25 @@ function escapeHtml(s) {
   }[c]));
 }
 
-window.copyPassword = async (id) => {
+window.copyField = async (id, field) => {
   const e = entries.find(x => x.id === id);
   if (!e) return;
-  await navigator.clipboard.writeText(e.password);
+  const val = field === 'password' ? e.password : e.username;
+  if (!val) {
+    alert("No " + field + " available.");
+    return;
+  }
+  await navigator.clipboard.writeText(val);
   resetTimer();
+  
+  setTimeout(async () => {
+    try {
+      const currentClip = await navigator.clipboard.readText();
+      if (currentClip === val) {
+        await navigator.clipboard.writeText("");
+      }
+    } catch (err) {}
+  }, 30000);
 };
 
 window.removeEntry = async (id) => {
@@ -104,6 +121,19 @@ window.removeEntry = async (id) => {
   const data = await api(`/api/entries/${id}`, {method:"DELETE"});
   entries = data.entries;
   render();
+};
+
+window.openEditModal = (id) => {
+  const e = entries.find(x => x.id === id);
+  if (!e) return;
+  $("#editId").value = e.id;
+  $("#modalTitle").textContent = "Edit credential";
+  $("#name").value = e.name;
+  $("#username").value = e.username;
+  $("#password").value = e.password;
+  $("#url").value = e.url;
+  $("#modal").hidden = false;
+  resetTimer();
 };
 
 $("#authBtn").onclick = async () => {
@@ -124,27 +154,33 @@ $("#authBtn").onclick = async () => {
 };
 
 $("#addBtn").onclick = () => {
+    $("#editId").value = "";
+    $("#modalTitle").textContent = "Add credential";
+    ["#name","#username","#password","#url"].forEach(x => $(x).value = "");
     $("#modal").hidden = false;
     resetTimer();
 };
 $("#closeModal").onclick = () => $("#modal").hidden = true;
 $("#search").oninput = render;
 
-// Cryptographically secure password generator
 $("#genBtn").onclick = () => {
     const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+~";
     const randomArray = new Uint32Array(16);
     crypto.getRandomValues(randomArray);
     const pass = Array.from(randomArray).map(x => chars[x % chars.length]).join('');
     $("#password").value = pass;
-    $("#password").type = "text"; // temporarily reveal so user can see it
-    setTimeout(() => $("#password").type = "password", 3000); // hide again after 3s
+    $("#password").type = "text";
+    setTimeout(() => $("#password").type = "password", 3000);
 };
 
-$("#createBtn").onclick = async () => {
+$("#saveEntryBtn").onclick = async () => {
   try {
-    const data = await api("/api/entries", {
-      method: "POST",
+    const editId = $("#editId").value;
+    const endpoint = editId ? `/api/entries/${editId}` : "/api/entries";
+    const method = editId ? "PUT" : "POST";
+
+    const data = await api(endpoint, {
+      method: method,
       body: JSON.stringify({
         name: $("#name").value,
         username: $("#username").value,
@@ -153,7 +189,7 @@ $("#createBtn").onclick = async () => {
       })
     });
     entries = data.entries;
-    ["#name","#username","#password","#url"].forEach(x => $(x).value = "");
+    ["#name","#username","#password","#url","#editId"].forEach(x => $(x).value = "");
     $("#modal").hidden = true;
     render();
   } catch (e) {
@@ -176,6 +212,33 @@ $("#exportBtn").onclick = async () => {
     }
 };
 
+async function handleImportFile(file) {
+    try {
+        const text = await file.text();
+        const jsonContent = JSON.parse(text);
+        const res = await api("/api/import", {
+            method: "POST",
+            body: JSON.stringify(jsonContent)
+        });
+        if (res.ok) {
+            alert("Vault imported successfully! Please unlock your vault.");
+            window.location.reload();
+        }
+    } catch (e) {
+        alert("Import failed: " + e.message);
+    }
+}
+
+$("#importVaultBtn").onclick = () => $("#importFile").click();
+$("#importFile").onchange = (e) => {
+    if (e.target.files[0]) handleImportFile(e.target.files[0]);
+};
+
+$("#importBtn").onclick = () => $("#importFileUnlocked").click();
+$("#importFileUnlocked").onchange = (e) => {
+    if (e.target.files[0]) handleImportFile(e.target.files[0]);
+};
+
 async function lockVault() {
   if (authToken) {
       await api("/api/lock", {method:"POST"}).catch(() => {});
@@ -188,6 +251,9 @@ async function lockVault() {
   $("#modal").hidden = true;
   $("#auth").hidden = false;
   $("#status").textContent = "LOCKED";
+  
+  // Re-verify status so title and button correctly show "Unlock" instead of "Create"
+  await init();
 }
 
 $("#lockBtn").onclick = lockVault;
