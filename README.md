@@ -1,50 +1,55 @@
-# CarbonIt Vault 🛡️
+<div align="center">
+  
+  # 🛡️ CarbonIt Vault
+  **The Sovereign, Post-Quantum Desktop Password Manager**
 
-**Developed by Edwin Sam K Reju** | [CarbonIt Labs](https://github.com/CarbonIt-Labs/CarbonIt-Vault)
+  [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+  [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+  [![Built with pywebview](https://img.shields.io/badge/built%20with-pywebview-blue)](https://pywebview.flowrl.com/)
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
-
-CarbonIt Vault is a local-first, serverless desktop password manager engineered for ultimate sovereignty and post-quantum security. By combining a native desktop OS wrapper (`pywebview`) with NIST-standardized post-quantum key encapsulation (ML-KEM-1024), CarbonIt Vault protects your credentials against modern brute-force techniques as well as future quantum computing threats.
-
----
-
-## 👨‍💻 Author & Lead Developer
-
-**Edwin Sam K Reju**  
-* Founder & Developer at CarbonIt Labs  
-* GitHub Repository: [https://github.com/CarbonIt-Labs/CarbonIt-Vault](https://github.com/CarbonIt-Labs/CarbonIt-Vault)
+  *Developed by **Edwin Sam K Reju** at [CarbonIt Labs](https://github.com/CarbonIt-Labs)*
+</div>
 
 ---
 
-## 🚀 Key Features
+## 🚀 Overview
 
-* **Post-Quantum Key Establishment:** Implements NIST-standardized **ML-KEM-1024** via QuantCrypt to ensure your vault keys remain secure even against quantum decryption.
-* **Argon2id Key Derivation:** Uses memory-hard password hashing (Argon2id) to protect against modern GPU/ASIC brute-force attacks.
-* **Zero-Trust Memory Management:** Actively zeroizes active symmetric keys using mutable `bytearray` objects in Python RAM the moment the vault is locked.
-* **Authenticated Symmetric Encryption:** Secure local storage (`.civ`) using QuantCrypt Krypton authenticated encryption.
+**CarbonIt Vault** is a local-first, serverless native desktop password manager engineered for ultimate data sovereignty and future-proof security. By combining a lightweight desktop OS wrapper with NIST-standardized post-quantum cryptography, CarbonIt Vault ensures your credentials are mathematically protected against both modern brute-force techniques and emerging quantum computing threats.
+
+Your data never touches a cloud server. Your master password never leaves your RAM. You own your vault.
 
 ---
 
-## 🔐 Security Architecture
+## ✨ Unrivaled Advantages
+
+* 🛡️ **Post-Quantum Key Encapsulation:** Implements NIST-standardized **ML-KEM-1024** (via QuantCrypt) to generate keys that even future quantum computers cannot break.
+* 🧠 **Zero-Trust Memory Hygiene:** Active RAM zeroization overwrites decrypted secrets and master passwords with null bytes the exact moment the vault is locked.
+* 🛑 **Anti-Brute-Force Shield:** Integrates memory-hard Argon2id hashing alongside an active, time-based rate-limiting lockout mechanism to neutralize local attack vectors.
+* 📦 **Sovereign Data Portability:** Seamlessly export, import, and backup your encrypted `.civ` (CarbonIt Vault) files across devices. 
+* ⏱️ **Auto-Clearing Clipboard:** Passwords copied to your system clipboard are automatically wiped after 30 seconds.
+* 🖥️ **Native Desktop Experience:** Built on `pywebview` for a seamless, borderless, native application feel across Windows, macOS, and Linux.
+
+---
+
+## 🔐 Cryptographic Architecture
 
 CarbonIt Vault operates under a strict **zero-knowledge** local model:
 
-1. **Password Hashing:** Argon2id processes your master password with a cryptographically secure 16-byte salt to yield a high-cost 64-byte `password_key`.
+1. **High-Cost Hashing:** Argon2id processes the master password with a 16-byte salt to yield a 64-byte `password_key`.
 2. **KEM Encapsulation:** ML-KEM-1024 generates a public/private keypair and encapsulates a shared secret.
-3. **Domain-Separated Key Derivation:** The final `vault_key` is established via SHA3-512 with strict domain separation:
-   $$\text{vault\_key} = \text{SHA3-512}(\text{"CARBONIT-VAULT-V1|"} \parallel \text{password\_key} \parallel \text{pq\_shared\_secret})$$
-4. **Encrypted Key Storage:** The ML-KEM secret key is encrypted with the password key using Krypton authenticated encryption.
-5. **Session Token Authorization:** All Javascript-to-Python bridge calls are strictly verified using runtime session tokens injected by `pywebview`.
+3. **Domain Separation:** The final `vault_key` is established via SHA3-512:
+   `vault_key = SHA3-512("CARBONIT-VAULT-V1|" + password_key + pq_shared_secret)`
+4. **Authenticated Encryption:** The vault contents and ML-KEM secret keys are encrypted using QuantCrypt Krypton authenticated symmetric encryption.
+5. **Secure RPC Bridge:** UI-to-Python API calls are strictly verified using runtime-injected, cryptographically secure session tokens.
 
 ---
 
-## 📦 Installation & Setup
+## ⚙️ Installation & Setup
 
 ### Prerequisites
 * Python 3.10 or higher
 
-### Steps
+### Developer Setup
 
 1. **Clone the Repository:**
    ```bash
@@ -52,39 +57,36 @@ CarbonIt Vault operates under a strict **zero-knowledge** local model:
    cd CarbonIt-Vault
    ```
 
-2. **Set Up Virtual Environment:**
-   * **Windows:**
-     ```cmd
-     python -m venv .venv
-     .venv\Scripts\activate
-     ```
-   * **Linux / macOS:**
-     ```bash
-     python3 -m venv .venv
-     source .venv/bin/activate
-     ```
+2. **Initialize Virtual Environment:**
+   * **Windows:** `python -m venv .venv && .venv\Scripts\activate`
+   * **Linux/macOS:** `python3 -m venv .venv && source .venv/bin/activate`
 
 3. **Install Dependencies:**
    ```bash
    pip install -r requirements.txt
    ```
 
+4. **Launch Application:**
+   ```bash
+   python app.py
+   ```
+
 ---
 
-## 💻 Running CarbonIt Vault
+## 🛠️ Production Build (Windows .exe)
 
-Launch the native desktop application:
+To compile CarbonIt Vault into a single executable file with your custom icon:
 
 ```bash
-python app.py
+pip install pyinstaller
+pyinstaller --noconsole --onefile --add-data "templates;templates" --add-data "static;static" --icon=logo.ico app.py
 ```
-
-> **Note:** Ensure `app.py`, `app.js`, `index.html`, `style.css`, and `crypto.py` are all located within the root directory of the project.
+*Your standalone desktop application will be generated in the `dist/` directory.*
 
 ---
 
-## 📄 License
+## 📄 License & Credits
 
-This project is licensed under the **MIT License**. See the [LICENSE](LICENSE) file or visit [Open Source Initiative](https://opensource.org/licenses/MIT) for full details.
+**Copyright (c) 2026 CarbonIt Labs | Edwin Sam K Reju**
 
-Copyright (c) 2026 Edwin Sam K Reju
+This project is licensed under the [MIT License](LICENSE).
