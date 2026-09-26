@@ -18,9 +18,12 @@
         <div class="eyebrow">POST-QUANTUM PASSWORD VAULT</div>
         <h1 id="authTitle">Unlock your vault</h1>
         <p class="muted" id="authHint">Your master password never leaves this local app.</p>
-        <input id="master" type="password" autocomplete="current-password"
-               placeholder="Master password">
+        <input id="master" type="password" autocomplete="current-password" placeholder="Master password">
         <button id="authBtn" class="primary">Unlock</button>
+        <div style="margin-top: 15px; text-align: center;">
+          <button id="importVaultBtn" class="ghost" style="font-size: 12px; width: 100%;">Import existing .civ vault</button>
+          <input type="file" id="importFile" accept=".civ" style="display: none;">
+        </div>
         <p id="authError" class="error"></p>
       </section>
 
@@ -28,8 +31,10 @@
         <div class="toolbar">
           <input id="search" placeholder="Search credentials...">
           <button id="addBtn" class="primary">+ Add</button>
-          <button id="exportBtn" class="ghost">Export Vault</button>
+          <button id="exportBtn" class="ghost">Export</button>
+          <button id="importBtn" class="ghost">Import</button>
           <button id="lockBtn" class="danger">Lock</button>
+          <input type="file" id="importFileUnlocked" accept=".civ" style="display: none;">
         </div>
 
         <div id="entries" class="grid"></div>
@@ -40,9 +45,10 @@
     <div id="modal" class="modal" hidden>
       <div class="modal-box">
         <div class="modal-head">
-          <h2>Add credential</h2>
+          <h2 id="modalTitle">Add credential</h2>
           <button id="closeModal" class="icon">×</button>
         </div>
+        <input type="hidden" id="editId">
         <input id="name" placeholder="Account / service">
         <input id="username" placeholder="Username or email">
         <div class="input-group">
@@ -50,7 +56,7 @@
             <button id="genBtn" class="ghost" style="margin-top: 7px; margin-left: 5px;">Generate</button>
         </div>
         <input id="url" placeholder="Website URL">
-        <button id="createBtn" class="primary" style="width: 100%; margin-top: 15px;">Add to vault</button>
+        <button id="saveEntryBtn" class="primary" style="width: 100%; margin-top: 15px;">Save to vault</button>
       </div>
     </div>
   </div>
