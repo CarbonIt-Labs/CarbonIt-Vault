@@ -1,5 +1,6 @@
 import json
 import secrets
+import time
 from pathlib import Path
 from flask import Flask, render_template, request, jsonify, send_file
 
@@ -9,9 +10,9 @@ app = Flask(__name__)
 
 VAULT_PATH = Path("carbonit_vault.civ")
 
-# In-memory store mapping secure tokens to active vault states.
-# This replaces Flask sessions to eliminate cookie-reset bugs.
+# In-memory session tracking & brute-force mitigation
 UNLOCKED = {}
+FAILED_ATTEMPTS = {"count": 0, "lockout_until": 0}
 
 
 @app.get("/")
@@ -41,23 +42,23 @@ def setup():
         return jsonify({"error": "Please use at least 12 characters for a secure CarbonIt Vault."}), 400
 
     vault, vault_key = create_vault(password)
-    VAULT_PATH.write_text(
-        json.dumps(vault, indent=2),
-        encoding="utf-8",
-    )
+    VAULT_PATH.write_text(json.dumps(vault, indent=2), encoding="utf-8")
 
     token = secrets.token_urlsafe(32)
-    UNLOCKED[token] = {
-        "raw": vault,
-        "entries": [],
-        "vault_key": vault_key,
-    }
+    UNLOCKED[token] = {"raw": vault, "entries": [], "vault_key": vault_key}
 
     return jsonify({"ok": True, "token": token, "entries": []})
 
 
 @app.post("/api/unlock")
 def unlock():
+    global FAILED_ATTEMPTS
+    now = time.time()
+    
+    if now < FAILED_ATTEMPTS["lockout_until"]:
+        wait_sec = int(FAILED_ATTEMPTS["lockout_until"] - now)
+        return jsonify({"error": f"Too many failed attempts. Locked out for {wait_sec}s."}), 429
+
     data = request.get_json(force=True)
     password = data.get("master_password", "")
 
@@ -66,7 +67,11 @@ def unlock():
 
     try:
         vault, vault_key = unlock_vault(VAULT_PATH, password)
+        FAILED_ATTEMPTS["count"] = 0  # Reset on success
     except Exception:
+        FAILED_ATTEMPTS["count"] += 1
+        if FAILED_ATTEMPTS["count"] >= 3:
+            FAILED_ATTEMPTS["lockout_until"] = time.time() + 30  # 30s penalty
         return jsonify({"error": "Invalid master password or damaged vault."}), 401
 
     token = secrets.token_urlsafe(32)
@@ -114,14 +119,30 @@ def add_entry():
         return jsonify({"error": "Name and password are required."}), 400
 
     state["entries"].append(entry)
+    save_unlocked_vault(VAULT_PATH, state["raw"], state["entries"], state["vault_key"])
 
-    save_unlocked_vault(
-        VAULT_PATH,
-        state["raw"],
-        state["entries"],
-        state["vault_key"],
-    )
+    return jsonify({"ok": True, "entries": state["entries"]})
 
+
+@app.put("/api/entries/<entry_id>")
+def update_entry(entry_id):
+    state = current_state()
+    if state is None:
+        return jsonify({"error": "Locked"}), 401
+
+    data = request.get_json(force=True)
+    target = next((x for x in state["entries"] if x["id"] == entry_id), None)
+    
+    if not target:
+        return jsonify({"error": "Entry not found."}), 404
+
+    target["name"] = str(data.get("name", target["name"])).strip()
+    target["username"] = str(data.get("username", target["username"])).strip()
+    if data.get("password"):
+        target["password"] = str(data.get("password"))
+    target["url"] = str(data.get("url", target["url"])).strip()
+
+    save_unlocked_vault(VAULT_PATH, state["raw"], state["entries"], state["vault_key"])
     return jsonify({"ok": True, "entries": state["entries"]})
 
 
@@ -131,16 +152,8 @@ def delete_entry(entry_id):
     if state is None:
         return jsonify({"error": "Locked"}), 401
 
-    state["entries"][:] = [
-        x for x in state["entries"] if x["id"] != entry_id
-    ]
-
-    save_unlocked_vault(
-        VAULT_PATH,
-        state["raw"],
-        state["entries"],
-        state["vault_key"],
-    )
+    state["entries"][:] = [x for x in state["entries"] if x["id"] != entry_id]
+    save_unlocked_vault(VAULT_PATH, state["raw"], state["entries"], state["vault_key"])
 
     return jsonify({"ok": True, "entries": state["entries"]})
 
@@ -150,6 +163,19 @@ def export_vault():
     if not VAULT_PATH.exists():
         return jsonify({"error": "No vault file exists to export."}), 404
     return send_file(VAULT_PATH, as_attachment=True, download_name="carbonit_vault.civ")
+
+
+@app.post("/api/import")
+def import_vault():
+    if VAULT_PATH.exists():
+        return jsonify({"error": "A vault already exists. Delete or move it before importing."}), 409
+    
+    data = request.get_json(force=True)
+    if "vault" not in data or "salt" not in data:
+        return jsonify({"error": "Invalid vault file format."}), 400
+    
+    VAULT_PATH.write_text(json.dumps(data, indent=2), encoding="utf-8")
+    return jsonify({"ok": True})
 
 
 if __name__ == "__main__":

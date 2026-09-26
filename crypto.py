@@ -18,7 +18,7 @@ def unb64(data: str) -> bytes:
 
 
 def password_key(master_password: str, salt: bytes) -> bytes:
-    """Derive a 64-byte high-cost key from the master password and vault salt."""
+    """Derive a 64-byte high-cost key from the master password and vault salt[cite: 2]."""
     return hash_secret_raw(
         secret=master_password.encode("utf-8"),
         salt=salt,
@@ -50,7 +50,7 @@ def krypton_decrypt(key: bytes, packet: dict) -> bytes:
 
 
 def make_vault_key(password_key_bytes: bytes, pq_shared_secret: bytes) -> bytes:
-    # Domain separation keeps this combination specific to the vault key.
+    """Domain separation keeps this combination specific to the vault key[cite: 2]."""
     return hashlib.sha3_512(
         b"CARBONIT-VAULT-V1|" + password_key_bytes + pq_shared_secret
     ).digest()
@@ -60,14 +60,12 @@ def create_vault(master_password: str) -> tuple[dict, bytes]:
     salt = os.urandom(16)
     pwd_key = password_key(master_password, salt)
 
-    # NIST-standardized ML-KEM-1024 through QuantCrypt.
     kem = MLKEM_1024()
     public_key, secret_key = kem.keygen()
     kem_ciphertext, shared_secret = kem.encaps(public_key)
 
     vault_key = make_vault_key(pwd_key, shared_secret)
 
-    # Protect the ML-KEM secret key with a password-derived symmetric key.
     encrypted_secret_key = krypton_encrypt(pwd_key, secret_key)
 
     entries = []
@@ -109,7 +107,6 @@ def unlock_vault(path: Path, master_password: str) -> tuple[dict, bytes]:
     plaintext = krypton_decrypt(vault_key, raw["vault"])
     entries = json.loads(plaintext.decode("utf-8"))
 
-    # Return the disk metadata plus the active key.
     return {"raw": raw, "entries": entries}, vault_key
 
 
