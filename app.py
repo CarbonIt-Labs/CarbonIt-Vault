@@ -180,6 +180,17 @@ def import_vault():
 
 if __name__ == "__main__":
     import webview
+    import ctypes
+    import sys
+    
+    # Tell Windows this is a distinct application to fix Taskbar/Task Manager icons
+    if sys.platform == "win32":
+        try:
+            myappid = 'carbonit.vault.app.1.0'
+            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
+        except Exception:
+            pass
+            
     webview.create_window(
         "CarbonIt Vault",
         app,
