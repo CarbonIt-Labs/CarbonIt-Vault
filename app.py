@@ -179,4 +179,13 @@ def import_vault():
 
 
 if __name__ == "__main__":
-    app.run(host="127.0.0.1", port=5000, debug=False)
+    import webview
+    webview.create_window(
+        "CarbonIt Vault",
+        app,
+        width=1120,
+        height=780,
+        min_size=(800, 600),
+        background_color="#07090b"
+    )
+    webview.start()
