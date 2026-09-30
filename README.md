@@ -3,7 +3,7 @@
   # 🛡️ CarbonIt Vault
   **The Sovereign, Post-Quantum Desktop Password Manager**
   <!-- Developer & Organization -->
-  [![Developer](https://img.shields.io/badge/Developer-Edwin%20Sam%20K%20Reju-ffffff?labelColor=000000&logo=github&logoColor=white&style=for-the-badge)](https://github.com/CarbonIt-Labs)
+  [![Developer](https://img.shields.io/badge/Developer-Edwin%20Sam%20K%20Reju-ffffff?labelColor=000000&logo=github&logoColor=white&style=for-the-badge)](https://edwinsamkreju.github.io/)
 [![Organization](https://img.shields.io/badge/Organization-CarbonIt%20Labs-000000?labelColor=000000&logo=github&logoColor=00e5ff&style=for-the-badge)](https://github.com/CarbonIt-Labs)
 
 <!-- Cryptography & Security Stack -->
