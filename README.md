@@ -79,7 +79,7 @@ To compile CarbonIt Vault into a single executable file with your custom icon:
 
 ```bash
 pip install pyinstaller
-pyinstaller --noconsole --onefile --add-data "templates;templates" --add-data "static;static" --icon=logo.ico app.py
+pyinstaller --clean app.spec
 ```
 *Your standalone desktop application will be generated in the `dist/` directory.*
 
