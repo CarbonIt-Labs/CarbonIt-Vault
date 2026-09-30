@@ -2,6 +2,15 @@
   
   # 🛡️ CarbonIt Vault
   **The Sovereign, Post-Quantum Desktop Password Manager**
+  <!-- Developer & Organization -->
+  [![Developer](https://img.shields.io/badge/Developer-Edwin%20Sam%20K%20Reju-ffffff?labelColor=000000&logo=github&logoColor=white&style=for-the-badge)](https://github.com/CarbonIt-Labs)
+[![Organization](https://img.shields.io/badge/Organization-CarbonIt%20Labs-000000?labelColor=000000&logo=github&logoColor=00e5ff&style=for-the-badge)](https://github.com/CarbonIt-Labs)
+
+<!-- Cryptography & Security Stack -->
+![PQC Encryption](https://img.shields.io/badge/PQC-ML--KEM--1024%20%2F%20Kyber-7000ff?style=flat-square)
+![Key Derivation](https://img.shields.io/badge/KDF-Argon2id-blue?style=flat-square)
+![Symmetric Cipher](https://img.shields.io/badge/Cipher-QuantCrypt--Krypton-00e5ff?style=flat-square)
+![Security Standard](https://img.shields.io/badge/Security-Post--Quantum%20Ready-00a9bd?style=flat-square)
 
   [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
   [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
