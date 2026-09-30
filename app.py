@@ -1,20 +1,50 @@
 import json
 import secrets
 import time
+import sys
+import os
+import traceback
 from pathlib import Path
-from flask import Flask, render_template, request, jsonify, send_file
 
+# 1. RESOLVE BINARY PATHS BEFORE IMPORTING CRYPTOGRAPHY
+if getattr(sys, 'frozen', False):
+    base_dir = sys._MEIPASS
+    # Force the temporary PyInstaller folder into the system PATH
+    os.environ["PATH"] = base_dir + os.pathsep + os.environ.get("PATH", "")
+    
+    # Explicitly register all temporary subdirectories for Windows DLL loading
+    if sys.platform == "win32":
+        try:
+            os.add_dll_directory(base_dir)
+            # Recursively register all folders so quantcrypt finds its internal ML-KEM binaries
+            for root, dirs, files in os.walk(base_dir):
+                os.add_dll_directory(root)
+        except AttributeError:
+            pass # Failsafe for older Python versions
+        except Exception:
+            pass
+else:
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+
+# 2. NOW IT IS SAFE TO IMPORT CRYPTO
+from flask import Flask, render_template, request, jsonify, send_file
 from crypto import create_vault, unlock_vault, save_unlocked_vault
 
-app = Flask(__name__)
+app = Flask(__name__, 
+            template_folder=os.path.join(base_dir, 'templates'),
+            static_folder=os.path.join(base_dir, 'static'))
 
-VAULT_PATH = Path("carbonit_vault.civ")
+data_dir = Path.home() / ".carbonit"
+data_dir.mkdir(exist_ok=True)
+VAULT_PATH = data_dir / "carbonit_vault.civ"
+
+@app.errorhandler(Exception)
+def handle_exception(e):
+    return jsonify({"error": f"Backend Error: {str(e)}"}), 500
 
 # In-memory session tracking & brute-force mitigation
 UNLOCKED = {}
 FAILED_ATTEMPTS = {"count": 0, "lockout_until": 0}
-
-
 @app.get("/")
 def index():
     return render_template("index.html")
@@ -181,7 +211,6 @@ def import_vault():
 if __name__ == "__main__":
     import webview
     import ctypes
-    import sys
     
     # Tell Windows this is a distinct application to fix Taskbar/Task Manager icons
     if sys.platform == "win32":
