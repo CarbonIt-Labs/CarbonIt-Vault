@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://carbonit-labs.github.io/CarbonIt-Vault/sitemap.xml
