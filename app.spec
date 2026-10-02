@@ -1,55 +1,66 @@
 # -*- mode: python ; coding: utf-8 -*-
 
 import os
+import sys
+import importlib.util
+from pathlib import Path
+
 from PyInstaller.utils.hooks import collect_all, copy_metadata
 from PyInstaller.utils.win32.versioninfo import (
-    VSVersionInfo, FixedFileInfo, StringFileInfo, StringTable, StringStruct, VarFileInfo, VarStruct
+    VSVersionInfo, FixedFileInfo, StringFileInfo, StringTable,
+    StringStruct, VarFileInfo, VarStruct
 )
 
-# 1. Site-packages and QuantCrypt path definition
-site_packages_path = r'C:\Users\USER\AppData\Local\Programs\Python\Python313\Lib\site-packages'
-quantcrypt_path = os.path.join(site_packages_path, 'quantcrypt')
+# Project root
+project_root = Path(__file__).resolve().parent
+
+# Locate QuantCrypt dynamically
+quantcrypt_spec = importlib.util.find_spec("quantcrypt")
+
+if quantcrypt_spec is None or not quantcrypt_spec.submodule_search_locations:
+    raise RuntimeError("Could not locate the quantcrypt package.")
+
+quantcrypt_path = Path(
+    next(iter(quantcrypt_spec.submodule_search_locations))
+)
 
 datas = [
-    ('templates', 'templates'), 
-    ('static', 'static')
-]
-binaries = []
-hiddenimports = [
-    'cffi',
-    '_cffi_backend',
-    'argon2',
-    '_argon2_cffi_bindings',
-    'quantcrypt',
-    'webview',
-    'flask'
+    (str(project_root / "templates"), "templates"),
+    (str(project_root / "static"), "static"),
 ]
 
-# Collect argon2 binaries & modules
-tmp_argon2 = collect_all('argon2')
+binaries = []
+
+hiddenimports = [
+    "cffi",
+    "_cffi_backend",
+    "argon2",
+    "_argon2_cffi_bindings",
+    "quantcrypt",
+    "webview",
+    "flask",
+]
+
+# Collect argon2
+tmp_argon2 = collect_all("argon2")
 datas += tmp_argon2[0]
 binaries += tmp_argon2[1]
 hiddenimports += tmp_argon2[2]
 
-# Collect quantcrypt binaries & modules
-tmp_qc = collect_all('quantcrypt')
+# Collect quantcrypt
+tmp_qc = collect_all("quantcrypt")
 datas += tmp_qc[0]
 binaries += tmp_qc[1]
 hiddenimports += tmp_qc[2]
 
-# Copy package metadata for runtime package-version lookups
-datas += copy_metadata('quantcrypt')
-# FIX: The pip package is named 'argon2-cffi', not 'argon2'. 
-# PyInstaller needs the pip distribution name to extract the metadata.
-datas += copy_metadata('argon2-cffi')
+# Package metadata
+datas += copy_metadata("quantcrypt")
+datas += copy_metadata("argon2-cffi")
 
-# FIX: quantcrypt relies on relative folder paths to load precompiled PQClean CFFI binaries.
-# PyInstaller flattens .dll files to root (_MEIPASS) by default, breaking internal lookups.
-# Copying the raw quantcrypt folder into datas preserves its required internal directory tree.
-if os.path.exists(quantcrypt_path):
-    datas.append((quantcrypt_path, 'quantcrypt'))
+# Preserve QuantCrypt's internal directory structure
+if quantcrypt_path.exists():
+    datas.append((str(quantcrypt_path), "quantcrypt"))
 
-# 2. Embed Windows Executable Version Info & Copyright
 version_info = VSVersionInfo(
     ffi=FixedFileInfo(
         filevers=(1, 0, 0, 0),
@@ -65,27 +76,35 @@ version_info = VSVersionInfo(
         StringFileInfo(
             [
                 StringTable(
-                    '040904B0',
+                    "040904B0",
                     [
-                        StringStruct('CompanyName', 'CarbonIt Labs'),
-                        StringStruct('FileDescription', 'CarbonIt Vault - Post-Quantum Desktop Password Manager'),
-                        StringStruct('FileVersion', '1.0.0.0'),
-                        StringStruct('InternalName', 'CarbonIt Vault'),
-                        StringStruct('LegalCopyright', '(c) 2026 CarbonIt Labs.'),
-                        StringStruct('OriginalFilename', 'app.exe'),
-                        StringStruct('ProductName', 'CarbonIt Vault'),
-                        StringStruct('ProductVersion', '1.0.0.0'),
+                        StringStruct("CompanyName", "CarbonIt Labs"),
+                        StringStruct(
+                            "FileDescription",
+                            "CarbonIt Vault - Post-Quantum Desktop Password Manager"
+                        ),
+                        StringStruct("FileVersion", "1.0.0.0"),
+                        StringStruct("InternalName", "CarbonIt Vault"),
+                        StringStruct(
+                            "LegalCopyright",
+                            "(c) 2026 CarbonIt Labs."
+                        ),
+                        StringStruct("OriginalFilename", "app.exe"),
+                        StringStruct("ProductName", "CarbonIt Vault"),
+                        StringStruct("ProductVersion", "1.0.0.0"),
                     ]
                 )
             ]
         ),
-        VarFileInfo([VarStruct('Translation', [1033, 1200])])
+        VarFileInfo([
+            VarStruct("Translation", [1033, 1200])
+        ])
     ]
 )
 
 a = Analysis(
-    ['app.py'],
-    pathex=[site_packages_path],
+    [str(project_root / "app.py")],
+    pathex=[str(project_root)],
     binaries=binaries,
     datas=datas,
     hiddenimports=hiddenimports,
@@ -105,7 +124,7 @@ exe = EXE(
     a.binaries,
     a.datas,
     [],
-    name='app',
+    name="app",
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
@@ -118,6 +137,6 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=['logo.ico'],
+    icon=[str(project_root / "logo.ico")],
     version=version_info,
 )
