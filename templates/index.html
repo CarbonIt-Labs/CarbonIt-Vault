@@ -3,38 +3,122 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="CarbonIt Vault – Post-Quantum Password Manager with Google Drive Sync">
   <title>CarbonIt Vault</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
   <div class="shell">
     <header>
-      <div class="brand"><span class="dot"></span>CARBONIT VAULT</div>
-      <div class="status" id="status">LOCKED</div>
+      <div class="brand">
+        <span class="dot"></span>CARBONIT VAULT
+      </div>
+      <div class="header-right">
+        <div id="syncBadge" class="sync-badge" hidden>
+          <span class="sync-dot" id="syncDot"></span>
+          <span id="syncLabel">Synced</span>
+        </div>
+        <div class="status" id="status">LOCKED</div>
+      </div>
     </header>
 
     <main>
+      <!-- ── AUTH SCREEN ── -->
       <section id="auth" class="card auth-card">
         <div class="eyebrow">POST-QUANTUM PASSWORD VAULT</div>
         <h1 id="authTitle">Unlock your vault</h1>
         <p class="muted" id="authHint">Your master password never leaves this local app.</p>
+
+        <!-- Google Drive sync panel (auth screen) -->
+        <div id="drivePanel" class="drive-panel">
+          <div id="driveDisconnected" class="drive-disconnected">
+            <button id="googleSignInBtn" class="google-btn" type="button">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/>
+                <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+              </svg>
+              Continue with Google
+            </button>
+            <p class="drive-hint">Sync your encrypted vault across devices — your master password stays local.</p>
+          </div>
+
+          <div id="driveConnected" class="drive-connected" hidden>
+            <div class="drive-account">
+              <div class="drive-avatar-wrap">
+                <img id="driveAvatar" class="drive-avatar" src="" alt="" hidden>
+                <div id="driveAvatarFallback" class="drive-avatar-fallback">G</div>
+              </div>
+              <div class="drive-account-info">
+                <div class="drive-email" id="driveEmail">user@gmail.com</div>
+                <div class="drive-label">Google Drive connected</div>
+              </div>
+              <button id="driveDisconnectBtnAuth" class="ghost drive-disconnect-btn" type="button">Disconnect</button>
+            </div>
+            <div id="driveRestoreHint" class="drive-restore-hint" hidden>
+              <span class="drive-restore-icon">☁️</span>
+              <div>
+                <strong>Cloud vault found!</strong>
+                <span class="muted" id="driveRestoreInfo"></span>
+              </div>
+              <button id="driveRestoreBtn" class="primary drive-restore-action" type="button">Restore</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="divider-or" id="dividerOr"><span>or unlock with master password</span></div>
+
         <input id="master" type="password" autocomplete="current-password" placeholder="Master password">
-        <button id="authBtn" class="primary">Unlock</button>
+        <button id="authBtn" class="primary" type="button">Unlock</button>
         <div style="margin-top: 15px; text-align: center;">
-          <button id="importVaultBtn" class="ghost" style="font-size: 12px; width: 100%;">Import existing .civ vault</button>
+          <button id="importVaultBtn" class="ghost" style="font-size: 12px; width: 100%;" type="button">Import existing .civ vault</button>
           <input type="file" id="importFile" accept=".civ" style="display: none;">
         </div>
         <p id="authError" class="error"></p>
       </section>
 
+      <!-- ── VAULT SCREEN ── -->
       <section id="vault" hidden>
         <div class="toolbar">
-          <input id="search" placeholder="Search credentials...">
-          <button id="addBtn" class="primary">+ Add</button>
-          <button id="exportBtn" class="ghost">Export</button>
-          <button id="importBtn" class="ghost">Import</button>
-          <button id="lockBtn" class="danger">Lock</button>
+          <input id="search" placeholder="Search credentials…">
+          <button id="addBtn" class="primary" type="button">+ Add</button>
+          <button id="exportBtn" class="ghost" type="button">Export</button>
+          <button id="importBtn" class="ghost" type="button">Import</button>
+          <button id="syncNowBtn" class="ghost sync-now-btn" type="button" title="Sync with Google Drive" hidden>
+            <span class="sync-icon">↕</span> Sync
+          </button>
+          <button id="lockBtn" class="danger" type="button">Lock</button>
           <input type="file" id="importFileUnlocked" accept=".civ" style="display: none;">
+        </div>
+
+        <!-- Sync status bar (vault screen) -->
+        <div id="syncBar" class="sync-bar" hidden>
+          <div class="sync-bar-left">
+            <span class="sync-dot" id="syncBarDot"></span>
+            <span id="syncBarLabel">Synced</span>
+            <span class="sync-bar-email muted" id="syncBarEmail"></span>
+            <span class="sync-bar-time muted" id="syncBarTime"></span>
+          </div>
+          <div class="sync-bar-right">
+            <button id="driveDisconnectBtnVault" class="ghost sync-tiny-btn" type="button">Disconnect Google</button>
+          </div>
+        </div>
+
+        <!-- Conflict banner -->
+        <div id="conflictBanner" class="conflict-banner" hidden>
+          <div class="conflict-icon">⚠️</div>
+          <div class="conflict-text">
+            <strong>Sync conflict detected.</strong>
+            <span id="conflictMsg" class="muted"></span>
+          </div>
+          <div class="conflict-actions">
+            <button id="useLocalBtn" class="ghost" type="button">Keep local</button>
+            <button id="useRemoteBtn" class="primary" type="button">Use cloud version</button>
+          </div>
         </div>
 
         <div id="entries" class="grid"></div>
@@ -42,24 +126,64 @@
       </section>
     </main>
 
+    <!-- ── ADD / EDIT MODAL ── -->
     <div id="modal" class="modal" hidden>
       <div class="modal-box">
         <div class="modal-head">
           <h2 id="modalTitle">Add credential</h2>
-          <button id="closeModal" class="icon">×</button>
+          <button id="closeModal" class="icon" type="button">×</button>
         </div>
         <input type="hidden" id="editId">
         <input id="name" placeholder="Account / service">
         <input id="username" placeholder="Username or email">
         <div class="input-group">
             <input id="password" type="password" placeholder="Password">
-            <button id="genBtn" class="ghost" style="margin-top: 7px; margin-left: 5px;">Generate</button>
+            <button id="genBtn" class="ghost" style="margin-top: 7px; margin-left: 5px;" type="button">Generate</button>
         </div>
         <input id="url" placeholder="Website URL">
-        <button id="saveEntryBtn" class="primary" style="width: 100%; margin-top: 15px;">Save to vault</button>
+        <button id="saveEntryBtn" class="primary" style="width: 100%; margin-top: 15px;" type="button">Save to vault</button>
+      </div>
+    </div>
+
+    <!-- ── GOOGLE DRIVE SETUP MODAL ── -->
+    <div id="driveSetupModal" class="modal" hidden>
+      <div class="modal-box drive-setup-modal">
+        <div class="modal-head">
+          <h2>Google Drive Setup Required</h2>
+          <button id="closeDriveSetup" class="icon" type="button">×</button>
+        </div>
+        <p class="muted">CarbonIt Vault needs a Google OAuth client configuration to connect to Drive.</p>
+        <div class="setup-step">
+          <div class="step-num">1</div>
+          <div>Go to <a href="https://console.cloud.google.com/" target="_blank" class="link">Google Cloud Console</a> → <em>APIs &amp; Services → Credentials</em></div>
+        </div>
+        <div class="setup-step">
+          <div class="step-num">2</div>
+          <div>Create an <strong>OAuth 2.0 Client ID</strong> of type <strong>Desktop application</strong></div>
+        </div>
+        <div class="setup-step">
+          <div class="step-num">3</div>
+          <div>Enable the <strong>Google Drive API</strong> and <strong>Google People API</strong></div>
+        </div>
+        <div class="setup-step">
+          <div class="step-num">4</div>
+          <div>Download the JSON credentials file and save it to:<br>
+            <code class="code-path">~/.carbonit/google_client_secrets.json</code>
+          </div>
+        </div>
+        <button id="driveSetupRefresh" class="primary" style="width:100%; margin-top:16px;" type="button">I've done this — try again</button>
+      </div>
+    </div>
+
+    <!-- ── SYNC OVERLAY (spinner) ── -->
+    <div id="syncOverlay" class="sync-overlay" hidden>
+      <div class="sync-spinner-box">
+        <div class="spinner"></div>
+        <div id="syncOverlayMsg" class="sync-overlay-msg">Connecting to Google…</div>
       </div>
     </div>
   </div>
+
   <script src="/static/app.js"></script>
 </body>
 </html>

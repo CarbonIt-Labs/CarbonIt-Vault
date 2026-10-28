@@ -29,6 +29,7 @@ else:
 # 2. NOW IT IS SAFE TO IMPORT CRYPTO
 from flask import Flask, render_template, request, jsonify, send_file
 from crypto import create_vault, unlock_vault, save_unlocked_vault
+from drive_sync import DriveSync, SyncStatus
 
 app = Flask(__name__, 
             template_folder=os.path.join(base_dir, 'templates'),
@@ -38,6 +39,21 @@ data_dir = Path.home() / ".carbonit"
 data_dir.mkdir(exist_ok=True)
 VAULT_PATH = data_dir / "carbonit_vault.civ"
 
+# ---------------------------------------------------------------------------
+# Drive sync singleton – shared across all requests
+# ---------------------------------------------------------------------------
+drive = DriveSync(vault_path=VAULT_PATH)
+
+# Push status changes into a small in-process event queue so the frontend
+# can poll for them via /api/sync/status.
+_sync_status_cache: dict = {}
+
+def _on_status_change(status: str, message: str) -> None:
+    _sync_status_cache["status"] = status
+    _sync_status_cache["message"] = message
+
+drive.on_status_change = _on_status_change
+
 @app.errorhandler(Exception)
 def handle_exception(e):
     return jsonify({"error": f"Backend Error: {str(e)}"}), 500
@@ -45,6 +61,7 @@ def handle_exception(e):
 # In-memory session tracking & brute-force mitigation
 UNLOCKED = {}
 FAILED_ATTEMPTS = {"count": 0, "lockout_until": 0}
+
 @app.get("/")
 def index():
     return render_template("index.html")
@@ -76,6 +93,9 @@ def setup():
 
     token = secrets.token_urlsafe(32)
     UNLOCKED[token] = {"raw": vault, "entries": [], "vault_key": vault_key}
+
+    # Auto-upload newly created vault if connected
+    drive.upload_after_save(VAULT_PATH)
 
     return jsonify({"ok": True, "token": token, "entries": []})
 
@@ -151,6 +171,9 @@ def add_entry():
     state["entries"].append(entry)
     save_unlocked_vault(VAULT_PATH, state["raw"], state["entries"], state["vault_key"])
 
+    # Auto-upload after every save
+    drive.upload_after_save(VAULT_PATH)
+
     return jsonify({"ok": True, "entries": state["entries"]})
 
 
@@ -173,6 +196,7 @@ def update_entry(entry_id):
     target["url"] = str(data.get("url", target["url"])).strip()
 
     save_unlocked_vault(VAULT_PATH, state["raw"], state["entries"], state["vault_key"])
+    drive.upload_after_save(VAULT_PATH)
     return jsonify({"ok": True, "entries": state["entries"]})
 
 
@@ -184,6 +208,7 @@ def delete_entry(entry_id):
 
     state["entries"][:] = [x for x in state["entries"] if x["id"] != entry_id]
     save_unlocked_vault(VAULT_PATH, state["raw"], state["entries"], state["vault_key"])
+    drive.upload_after_save(VAULT_PATH)
 
     return jsonify({"ok": True, "entries": state["entries"]})
 
@@ -206,6 +231,101 @@ def import_vault():
     
     VAULT_PATH.write_text(json.dumps(data, indent=2), encoding="utf-8")
     return jsonify({"ok": True})
+
+
+# ---------------------------------------------------------------------------
+# Google Drive sync API
+# ---------------------------------------------------------------------------
+
+@app.get("/api/sync/state")
+def sync_state():
+    """Return current sync state and user info for the frontend."""
+    return jsonify(drive.get_state())
+
+
+@app.get("/api/sync/status")
+def sync_status_poll():
+    """Lightweight poll endpoint – returns just the status string."""
+    return jsonify({
+        "status": _sync_status_cache.get("status", drive.get_state()["status"]),
+        "message": _sync_status_cache.get("message", ""),
+    })
+
+
+@app.post("/api/sync/auth/start")
+def sync_auth_start():
+    """
+    Initiate the Google OAuth PKCE flow.  This will open the system browser
+    and block until the user completes auth (up to 3 minutes).
+    """
+    result = drive.start_auth()
+    # After auth, try to find an existing cloud vault
+    if result.get("ok"):
+        check = drive.check_remote()
+        result["remote_exists"] = check.get("exists", False)
+        result["remote_info"] = check if check.get("exists") else None
+    return jsonify(result), (200 if result.get("ok") else 400)
+
+
+@app.post("/api/sync/auth/disconnect")
+def sync_auth_disconnect():
+    """Revoke token and clear credentials. Local vault is NOT deleted."""
+    return jsonify(drive.disconnect())
+
+
+@app.post("/api/sync/upload")
+def sync_upload():
+    """Manually trigger an upload of the local vault."""
+    result = drive.upload(VAULT_PATH)
+    code = 200 if result.get("ok") else (409 if result.get("error") == "conflict" else 400)
+    return jsonify(result), code
+
+
+@app.post("/api/sync/download")
+def sync_download():
+    """
+    Download the remote vault.
+
+    If a local vault exists this may return a conflict report rather than
+    overwriting.  Pass {"force": true} in the JSON body to overwrite.
+    """
+    data = request.get_json(force=True, silent=True) or {}
+    force = bool(data.get("force", False))
+    result = drive.download(VAULT_PATH, force=force)
+    # If download succeeded and previously unlocked sessions exist,
+    # invalidate them so the user must unlock again.
+    if result.get("ok") and not result.get("already_synced"):
+        UNLOCKED.clear()
+    return jsonify(result)
+
+
+@app.get("/api/sync/check_remote")
+def sync_check_remote():
+    """Check whether a remote vault exists without downloading."""
+    return jsonify(drive.check_remote())
+
+
+@app.post("/api/sync/conflict/use_local")
+def sync_conflict_use_local():
+    """Resolve conflict by keeping the local vault and uploading it."""
+    result = drive.resolve_conflict_use_local()
+    return jsonify(result), (200 if result.get("ok") else 400)
+
+
+@app.post("/api/sync/conflict/use_remote")
+def sync_conflict_use_remote():
+    """Resolve conflict by replacing local vault with downloaded remote copy."""
+    result = drive.resolve_conflict_use_remote()
+    if result.get("ok"):
+        UNLOCKED.clear()
+    return jsonify(result), (200 if result.get("ok") else 400)
+
+
+@app.post("/api/sync/oauth_config")
+def sync_oauth_config():
+    """Reload OAuth config from the default location.  Returns whether config was found."""
+    found = drive.configure_oauth()
+    return jsonify({"configured": found})
 
 
 if __name__ == "__main__":
