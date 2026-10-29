@@ -176,9 +176,19 @@ button:active { transform: scale(.97); }
   animation: fadein .3s ease;
 }
 .drive-restore-icon { font-size: 22px; flex-shrink: 0; }
-.drive-restore-hint > div { flex: 1; font-size: 13px; }
+.drive-restore-hint > div { flex: 1; min-width: 0; font-size: 13px; }
 .drive-restore-hint strong { display: block; margin-bottom: 2px; }
-.drive-restore-action { padding: 9px 16px; font-size: 13px; flex-shrink: 0; }
+/* The generic auth-card primary-button rule sets width: 100%; keep Restore
+   sized to its label so it stays inside this horizontal cloud-vault banner. */
+.auth-card .drive-restore-action {
+  width: auto;
+  max-width: 100%;
+  margin-top: 0;
+  padding: 9px 16px;
+  font-size: 13px;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
 
 /* ── Divider ── */
 .divider-or {

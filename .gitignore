@@ -1,0 +1,18 @@
+
+# Python virtual environments and generated files
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+build/
+dist/
+
+# Private vault data and credentials
+*.civ
+credentials.json
+client_secret*.json
+.google_creds
+token.json
+tokens.json
+.env
+.env.*
